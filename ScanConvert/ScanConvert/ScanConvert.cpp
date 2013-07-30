@@ -13,42 +13,56 @@ using namespace std;
 
 #define ImageW 400
 #define ImageH 400
+#define MAX_POLYGONS 15
+
 float framebuffer[ImageH][ImageW][3];
+
 enum state_input{
 	input,
 	clip
 };
+
 state_input s = input;
 typedef enum direction {in, out};
+
 int left_x, left_y;
 int right_x, right_y;
 int min_x, min_y, max_x, max_y;
 int pCount = 0;
+
 struct vertex
 {
 	int x, y;
 };
+
 struct edge
 {
 	vertex vertex1, vertex2;
 };
+
 struct AEL_node
 {
 	int maxY;
 	float currentX, xIncr;
 };
+
 class polygon
 {
 	private:	
 		vertex v1,v2;
 		edge e;
 		AEL_node A;
-		vector<AEL_node>AEL;                 //To store create an AEL
+		// To store an Active Edge List (AEL) -->List of all edges intersecting current scan line
+		vector<AEL_node>AEL;
 
 	public:
-		vector<vector<float>>color;		     //To store color codes per polygon
-		vector<vector<vector<edge>>>table;   //To store the AET of all the polygons: Dimension = no of polygons(fixed=15) x no of scan lines(fixed=ImageH) x [no of edges]
-		vector<vector<vertex>>AET_poly;      //To store the input vertices of all the polygons: Dimension = no of polygons x no of vertices 
+		 //To store color codes per polygon
+		vector<vector<float>>color;
+		// To store the Active Edge Table (AET) of all the polygons: 
+		// Dimension =  [no of edges] x no of scan lines(fixed=ImageH) x no of polygons(fixed=15)
+		vector<vector<vector<edge>>>table;   
+		//To store the input vertices of all polygons: Dimension = no of polygons x no of vertices 
+		vector<vector<vertex>>AET_poly;
 		static bool sortAEL(AEL_node n1, AEL_node n2); 
 		void fill_AET(int x, int y);
 		void fill_table(vector<vertex>AET, int polyNum);
@@ -61,16 +75,20 @@ class polygon
 		void setFramebuffer(int x, int y, float R, float G, float B);
 }p;
 
-
+/***
+* sortAEL() function sort the two nodes based on their x-cordinates
+***/
 bool polygon :: sortAEL(AEL_node n1, AEL_node n2)
 {
 	return n1.currentX<n2.currentX?true:false;
 }
+
 void polygon :: fill_AET(int x, int y)
 {
 	v1.x = x; v1.y = y;
 	AET_poly[pCount].push_back(v1);
 }
+
 void polygon :: fill_table(vector<vertex>AET, int polyNum)
 {
 	vertex first;
@@ -130,7 +148,6 @@ void polygon :: fill_table(vector<vertex>AET, int polyNum)
 	}
 }
 
-
 direction polygon :: getDir(int point, int k)
 {
 	if(k == 0)
@@ -162,6 +179,7 @@ direction polygon :: getDir(int point, int k)
 			return out;
 	}
 }
+
 vertex polygon :: getIntersection(vertex v1, vertex v2, int k)
 {
 	float slope;
@@ -293,6 +311,7 @@ void polygon :: clipPoly(int polyNum)
 	}
 	p.fill_table(out,polyNum);
 }
+
 void polygon :: polyRasterize(int polyNum)
 {
 	int i = polyNum;
@@ -340,6 +359,7 @@ void polygon :: polyRasterize(int polyNum)
 	}
 	drawit();
 }
+
 void keyboard ( unsigned char key, int x, int y )
 {
 	switch ( key )
@@ -353,6 +373,7 @@ void keyboard ( unsigned char key, int x, int y )
 			break;
 	}
 }
+
 struct color {
 	float r, g, b;		// Color (R,G,B values)
 };
@@ -375,9 +396,8 @@ void polygon :: clearFramebuffer()
 		}
 	}
 }
+
 // Sets pixel x,y to the color RGB
-// I've made a small change to this function to make the pixels match
-// those returned by the glutMouseFunc exactly - Scott Schaefer 
 void polygon :: setFramebuffer(int x, int y, float R, float G, float B)
 {
 	// changes the origin from the lower-left corner to the upper-left corner
@@ -416,12 +436,6 @@ void display(void)
 			glVertex2i(right_x, right_y);
 			glVertex2i(right_x, left_y);
 		glEnd();
-		//p.clearFramebuffer();
-		/*for(int i=0;i<pCount;++i)
-		{
-			p.clipPoly(i);
-			p.polyRasterize(i);
-		}*/
 	}
 	else
 	{
@@ -430,6 +444,7 @@ void display(void)
 	}
 	glFlush ( );
 }
+
 int press = 0;
 void mouseMotion(int x, int y)
 {	
@@ -452,6 +467,7 @@ void mouseMotion(int x, int y)
 	}
 	glutPostRedisplay();
 }
+
 void init(void)
 {
 	gluOrtho2D ( 0, ImageW - 1, ImageH - 1, 0 );
@@ -511,7 +527,8 @@ void mouseMove(int button, int state, int x, int y)
 int main(int argc, char** argv)
 {
 	srand(time(NULL));
-	for(int j=0;j<15;++j)
+	// Since sizes are fixed --> Do a pre-allocation of memory
+	for(int j=0;j<MAX_POLYGONS;++j)
 	{
 		p.table.push_back(vector<vector<edge>>());
 		p.color.push_back(vector<float>());
